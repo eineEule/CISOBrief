@@ -1,0 +1,33 @@
+{# Threat condition + today's key risks. Inline styles so it renders the same in email clients and on the web. #}
+{% with c=brief.condition %}{% if c %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:4px 0 18px;background:{{ c.tint }};border:1px solid {{ c.color }}33;border-left:6px solid {{ c.color }};border-radius:6px">
+  <tr><td style="padding:14px 16px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>
+      <td valign="middle">
+        <div style="font:700 11px/14px Segoe UI,Arial,sans-serif;letter-spacing:.12em;color:#5b6470;text-transform:uppercase">Threat condition · {{ brief.date }}</div>
+        <div style="font:800 30px/36px Segoe UI,Arial,sans-serif;letter-spacing:.02em;color:{{ c.color }}">{{ c.name }} <span style="font:600 14px Segoe UI,Arial,sans-serif;color:#1b1f24;letter-spacing:0">— {{ c.posture }}</span></div>
+      </td>
+      <td valign="middle" align="right" width="240">
+        <table role="presentation" cellpadding="0" cellspacing="2" style="border-collapse:separate"><tr>
+          {% for s in c.scale %}<td width="44" height="10" style="background:{% if s.n <= c.level %}{{ s.color }}{% else %}#e5e7eb{% endif %};border-radius:2px;{% if s.active %}outline:2px solid {{ s.color }};outline-offset:1px;{% endif %}"></td>{% endfor %}
+        </tr><tr>
+          {% for s in c.scale %}<td align="center" style="font:600 8px/12px Segoe UI,Arial,sans-serif;color:{% if s.active %}{{ s.color }}{% else %}#9aa3ad{% endif %};letter-spacing:0">{{ s.name }}</td>{% endfor %}
+        </tr></table>
+      </td>
+    </tr></table>
+    {% if c.rationale %}<p style="margin:10px 0 0;font:400 14px/20px Segoe UI,Arial,sans-serif;color:#1b1f24">{{ c.rationale }}</p>{% endif %}
+    {% if c.drivers %}<p style="margin:8px 0 0;font:400 12px/18px Segoe UI,Arial,sans-serif;color:#5b6470"><strong style="color:#1b1f24">Why:</strong> {{ c.drivers|join:" · " }}</p>{% endif %}
+    {% if brief.key_risks %}
+      <div style="margin:14px 0 6px;font:700 11px/14px Segoe UI,Arial,sans-serif;letter-spacing:.12em;color:#5b6470;text-transform:uppercase">Today's key risks</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        {% for r in brief.key_risks %}
+        <tr><td valign="top" width="26" style="padding:4px 0;font:800 15px/20px Segoe UI,Arial,sans-serif;color:{{ c.color }}">{{ forloop.counter }}</td>
+            <td style="padding:4px 0;font:400 14px/20px Segoe UI,Arial,sans-serif;color:#1b1f24">
+              {% if r.link %}<a href="{{ r.link }}" style="color:#1b1f24;font-weight:700;text-decoration:underline">{{ r.risk }}</a>{% else %}<strong>{{ r.risk }}</strong>{% endif %}
+              {% if r.why %}<br><span style="color:#5b6470;font-size:13px">{{ r.why }}</span>{% endif %}</td></tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </td></tr>
+</table>
+{% endif %}{% endwith %}

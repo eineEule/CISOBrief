@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Preview · CISO Brief{% endblock %}
+{% block crumbs %}<a href="/">Briefs</a> / <a href="/mailers/">Mailers</a> / <b>Preview</b>{% endblock %}
+{% block content %}
+{% if errors %}
+  <div class="card"><h2>Can't preview yet</h2>
+  <ul class="errorlist">{% for field, errs in errors.items %}<li>{{ field }}: {{ errs|join:" " }}</li>{% endfor %}</ul>
+  <p class="muted">Fix these in the builder tab and preview again.</p></div>
+{% else %}
+  <div class="card" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06)">
+    <span class="badge med">Preview</span> <strong style="margin-left:6px">“{{ draft.name }}”</strong>
+    <span class="muted small"> — built from the last {% if draft.frequency == "weekly" %}7 days{% else %}30 days{% endif %} of collected data, including items already sent. Nothing was saved or emailed.{% if not use_ai %} AI-written sections are filled in with “Run AI preview” or at send time.{% endif %}</span>
+  </div>
+  <div class="paper">{{ body }}</div>
+{% endif %}
+{% endblock %}

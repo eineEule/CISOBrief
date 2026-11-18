@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Set up your organization · CISO Brief{% endblock %}
+{% block crumbs %}<b>Set up your organization</b>{% endblock %}
+{% block content %}
+<div style="max-width:560px;margin:24px auto">
+  <div class="card">
+    <div class="card-head"><span class="num">01</span><h2>Tell us about your organization</h2></div>
+    <p class="muted small" style="margin:-6px 0 18px">Your briefs, watchlist and recipients all belong to your organization. You'll be its owner, and you can invite teammates later.</p>
+    <form method="post" novalidate>{% csrf_token %}
+      {% for f in form %}
+        <div class="field"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}
+          {% if f.help_text %}<p class="help">{{ f.help_text }}</p>{% endif %}{{ f.errors }}</div>
+      {% endfor %}
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center;height:36px">Create organization</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

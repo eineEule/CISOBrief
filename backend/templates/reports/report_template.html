@@ -1,0 +1,88 @@
+{% load static %}<div class="brief">
+  <div class="brief-logo" style="background:#080c15;margin:-28px -32px 20px;padding:16px 32px;border-radius:12px 12px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact"><img src="{% static 'brand/logo-email.png' %}" width="240" alt="CISO Brief: Executive Threat Intelligence" style="display:block;width:240px;max-width:100%;height:auto"></div>
+  <p class="muted" style="margin:0">{{ brief.org }} · {{ brief.mailer }} · {{ brief.date }}</p>
+  {% if "summary" in brief.sections %}<div style="margin-top:10px">{% include "reports/_condition.html" %}</div>{% endif %}
+  <h1 style="margin:4px 0 8px;font-size:24px">{{ brief.headline }}</h1>
+  <p class="muted" style="margin-top:0">{{ brief.stats.included }} relevant of {{ brief.stats.analyzed }} new items reviewed{% if brief.stats.items_shown and brief.stats.high %} · {{ brief.stats.high }} rated high-risk (70+ on a 0–100 scale, listed below){% endif %}</p>
+
+  {% for s in brief.sections %}
+    {% if s == "summary" and brief.summary %}
+      <p style="font-size:16px">{{ brief.summary }}</p>
+
+    {% elif s == "early_warning" and brief.early_warning %}
+      {% with ew=brief.early_warning %}
+      <h2 class="sec">Early warning</h2>
+      {% if not ew.has_watchlist %}<p class="muted">Add your company's names, domains and key suppliers to this mailer's watchlist to get alerts here.</p>{% endif %}
+      {% for a in ew.alerts %}
+        <div class="ew ew-{{ a.severity }}">
+          <div><span class="sev sev-{{ a.severity }}">{{ a.severity|upper }}</span> <strong>{{ a.relation_label }}</strong> · {{ a.kind_label }} · <span class="muted">{{ a.target }} · {{ a.when }}</span></div>
+          <div style="margin-top:2px">{% if a.url %}<a href="{{ a.url }}" rel="noopener noreferrer">{{ a.title }}</a>{% else %}{{ a.title }}{% endif %}</div>
+          {% if a.detail %}<div class="muted" style="font-size:13px">{{ a.detail|truncatechars:240 }}</div>{% endif %}
+          {% if a.more %}<div class="muted" style="font-size:13px">+ {{ a.more }} more report{{ a.more|pluralize }}: {{ a.more_titles|slice:":3"|join:"; " }}{% if a.more > 3 %}; …{% endif %}</div>{% endif %}
+          {% if a.next_step %}<div style="font-size:13px"><strong>Next step:</strong> {{ a.next_step }}</div>{% endif %}
+        </div>
+      {% empty %}
+        {% if ew.has_watchlist %}<p class="muted">No new signals for your company, suppliers or vendors this period.</p>{% endif %}
+      {% endfor %}
+      {% if ew.more %}<p class="muted">+ {{ ew.more }} lower-priority signal{{ ew.more|pluralize }}.</p>{% endif %}
+      {% if ew.actors %}
+        <p style="margin-bottom:4px"><strong>Groups that target your industry and are active in current reporting</strong></p>
+        <ul>{% for g in ew.actors %}<li><a href="{{ g.url }}" rel="noopener noreferrer">{{ g.name }}</a> ({{ g.id }}) — targets {{ g.industries|join:", " }}{% if g.seen_as and g.seen_as != g.name %}; seen as “{{ g.seen_as }}”{% endif %}</li>{% endfor %}</ul>
+      {% endif %}
+      {% endwith %}
+
+    {% elif s == "actions" and brief.actions %}
+      <h2 class="sec">Immediate actions</h2>
+      <ol>{% for a in brief.actions %}<li>{{ a }}</li>{% endfor %}</ol>
+
+    {% elif s == "themes" and brief.themes %}
+      <h2 class="sec">Top themes</h2>
+      <ul>{% for t in brief.themes %}<li><strong>{{ t.theme }}</strong>{% if t.why_it_matters %} — {{ t.why_it_matters }}{% endif %}</li>{% endfor %}</ul>
+
+    {% elif s == "attacks" and brief.attacks %}
+      <h2 class="sec">Active attacks in the wild</h2>
+      <ul>{% for a in brief.attacks %}
+        <li>{% if a.link %}<a href="{{ a.link }}" rel="noopener noreferrer">{{ a.title }}</a>{% else %}{{ a.title }}{% endif %}
+          <span class="muted">· {{ a.actor|default:"Unknown" }}</span>{% if a.why_it_matters %}<br>{{ a.why_it_matters }}{% endif %}</li>
+      {% endfor %}</ul>
+
+    {% elif s == "kev" and brief.kev %}
+      <h2 class="sec">New CISA KEV entries</h2>
+      <table><tbody>{% for i in brief.kev %}
+        <tr><td><a href="{{ i.url }}" rel="noopener noreferrer">{{ i.title }}</a>{% if i.matched %}<br><span class="tag">{{ i.matched|join:", " }}</span>{% endif %}</td></tr>
+      {% endfor %}</tbody></table>
+
+    {% elif s == "vendors" and brief.vendors %}
+      <h2 class="sec">Your vendor watchlist</h2>
+      <table><tbody>{% for v in brief.vendors %}
+        <tr><td style="width:180px"><strong>{{ v.vendor }}</strong></td>
+            <td>{% for i in v.items %}<div><a href="{{ i.url }}" rel="noopener noreferrer">{{ i.title }}</a>{% if i.exploited %} <span class="pill failed">exploited</span>{% endif %}</div>{% empty %}<span class="muted">Nothing new</span>{% endfor %}</td></tr>
+      {% endfor %}</tbody></table>
+
+    {% elif s == "items" and brief.items %}
+      <h2 class="sec">Top items by risk</h2>
+      <table>
+        <thead><tr><th>Risk /100</th><th>Item</th><th>Source</th></tr></thead>
+        <tbody>{% for i in brief.items %}
+          <tr><td>{{ i.risk }}</td>
+              <td><a href="{{ i.url }}" rel="noopener noreferrer">{{ i.title }}</a>{% if i.exploited %} <span class="pill failed">exploited</span>{% endif %}{% if i.epss is not None %} <span class="tag">EPSS {{ i.epss }}%</span>{% endif %}
+                  {% if i.matched %}<br><span class="tag">Matches: {{ i.matched|join:", " }}</span>{% endif %}</td>
+              <td class="muted">{{ i.source }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    {% endif %}
+  {% endfor %}
+
+  {% if brief.limitations %}
+    <h2 class="sec">Limitations</h2>
+    <ul class="muted">{% for l in brief.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+  {% endif %}
+  <p class="muted" style="font-size:12px">AI-assisted summary; verify before acting. Leak-site posts are criminals' claims until confirmed.
+  {% if brief.sources %}<br>Sources: {{ brief.sources|join:" · " }}.{% if "MITRE ATT&CK®" in brief.sources %} MITRE ATT&CK® © The MITRE Corporation, reproduced with permission.{% endif %}{% endif %}</p>
+  <style>
+    .ew { border-left:4px solid #d0d5dd; padding:6px 10px; margin:8px 0; background:#fafbfc; }
+    .ew-critical { border-color:#b42318; background:#fef3f2; } .ew-high { border-color:#dc6803; background:#fffaeb; } .ew-medium { border-color:#0b5cad; }
+    .sev { font-size:11px; font-weight:700; padding:1px 6px; border-radius:4px; background:#eef2f6; }
+    .sev-critical { background:#b42318; color:#fff; } .sev-high { background:#dc6803; color:#fff; } .sev-medium { background:#0b5cad; color:#fff; }
+  </style>
+</div>

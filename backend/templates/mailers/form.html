@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block title %}{% if mailer %}Edit {{ mailer.name }}{% else %}Build a mailer{% endif %} · CISO Brief{% endblock %}
+{% block crumbs %}<a href="/">Briefs</a> / <a href="{% url 'mailers:list' %}">Mailers</a> / <b>{% if mailer %}Edit ‘{{ mailer.name }}’{% else %}New mailer{% endif %}</b>{% endblock %}
+{% block extra_head %}
+<style>
+  .builder { display:grid; grid-template-columns:minmax(0, 1fr) 480px; gap:20px; align-items:start; }
+  .bhead { display:flex; align-items:flex-start; gap:16px; margin-bottom:16px; }
+  .bhead h1 { font-size:28px; line-height:34px; letter-spacing:-.025em; }
+  .bhead .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .bhead .actions { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .steps { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .steps a { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--line); border-radius:var(--r-xl); background:var(--panel); color:var(--text-2); font:500 12px/1 var(--mono); }
+  .steps a span { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:var(--raised); color:var(--muted); font-size:10px; }
+  .steps a:hover { text-decoration:none; color:var(--text); border-color:var(--line-2); }
+  .card { scroll-margin-top:64px; }
+  .personas { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .persona { display:block; cursor:pointer; padding:14px; border-radius:var(--r-lg); background:var(--well); border:1px solid var(--line-2); position:relative; }
+  .persona input { position:absolute; top:14px; right:14px; accent-color:var(--primary); }
+  .persona b { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:6px; }
+  .persona p { margin:0 0 10px; color:var(--text-2); font-size:13px; line-height:19px; }
+  .persona:has(input:checked) { border-color:rgba(16,185,129,.55); box-shadow:0 0 0 1px rgba(16,185,129,.25), 0 0 18px -6px rgba(16,185,129,.4); }
+  .cadence { display:flex; align-items:center; gap:10px; margin-top:14px; padding:10px 12px; }
+  .chips > .vgroup { display:block; }
+  .vgroup + .vgroup { margin-top:12px; }
+  .chips label.other-chip { border-style:dashed; color:var(--cyan-hi); }
+  .chips label.other-chip:has(input:checked) { border-style:solid; border-color:rgba(6,182,212,.5); background:rgba(6,182,212,.1); color:var(--cyan-hi); }
+  .chips label.other-chip:has(input:checked)::before { content:""; }
+  .sources { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-bottom:18px; }
+  .src { padding:8px 10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--well); }
+  .src b { display:block; font:500 12px/16px var(--sans); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .src .mono-sm { color:var(--cyan-hi); } .src.off .mono-sm { color:var(--med); }
+  .suprow { display:grid; grid-template-columns:28px 1fr 1fr 28px; gap:8px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--well); margin-bottom:6px; }
+  .suprow .ico { width:28px; height:28px; border-radius:var(--r); background:var(--raised); display:grid; place-items:center; color:var(--muted); font:600 11px var(--mono); }
+  .suprow input { height:28px; }
+  .modules { list-style:none; margin:0; padding:0; }
+  .modules li { display:grid; grid-template-columns:18px 28px 1fr auto auto auto 20px; gap:10px; align-items:center; height:48px; padding:0 10px; margin-bottom:6px;
+                background:var(--raised); border:1px solid var(--line-2); border-radius:var(--r-md); }
+  .modules li.off { opacity:.5; background:var(--panel); }
+  .modules li.dragging { opacity:.4; } .modules li.over { box-shadow:inset 0 2px 0 var(--cyan); }
+  .modules .handle { cursor:grab; color:rgba(255,255,255,.25); font-size:14px; letter-spacing:-2px; user-select:none; }
+  .modules .n { font:500 12px var(--mono); color:var(--muted); }
+  .modules .name b { display:block; font-size:13px; font-weight:500; line-height:17px; }
+  .modules .name .mono-sm { color:var(--muted); } .modules .name .mono-sm.ai { color:var(--cyan-hi); } .modules .name .mono-sm.crit { color:#fb7185; } .modules .name .mono-sm.cyan { color:var(--cyan-hi); }
+  .modules button { all:unset; cursor:pointer; color:var(--muted); padding:4px; } .modules button:hover { color:var(--text); }
+  .tune { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+  .tune .well { padding:12px; }
+  .riskval { font:600 12px var(--mono); color:var(--primary-hi); }
+  /* live canvas */
+  .canvas { position:sticky; top:64px; }
+  .canvas .bar { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .canvas .bar .badge { margin-left:auto; }
+  .envelope { padding:12px 14px; border-bottom:1px solid var(--line); font:400 11px/16px var(--mono); color:var(--text-2); }
+  .envelope b { color:var(--muted); font-weight:600; display:inline-block; width:52px; }
+  .envelope .subj { margin-top:6px; color:var(--text); font:600 13px/18px var(--sans); }
+  .frame-wrap { background:#f6f7f9; border-radius:0 0 var(--r-lg) var(--r-lg); overflow:hidden; position:relative; }
+  #email-frame { width:100%; height:calc(100vh - 290px); min-height:420px; border:0; display:block; background:#f6f7f9; }
+  .frame-wrap .busy { position:absolute; top:10px; right:10px; }
+  .canvas .status { display:flex; justify-content:space-between; margin-top:8px; }
+  .canvas .errors { padding:12px 14px; color:#fb7185; font-size:12px; display:none; }
+  @media (max-width: 1180px) { .builder { grid-template-columns:1fr; } .canvas { position:static; } .sources { grid-template-columns:repeat(2,1fr); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="mailer-form" novalidate
+      data-preview-url="{% if mailer %}{% url 'mailers:preview' mailer.id %}{% else %}{% url 'mailers:preview_new' %}{% endif %}"
+      data-test-url="{% if mailer %}{% url 'mailers:test_send' mailer.id %}{% else %}{% url 'mailers:test_send_new' %}{% endif %}">
+  {% csrf_token %}
+  {{ form.sections }}
+
+  <div class="bhead">
+    <a class="btn icon" href="{% url 'mailers:list' %}" aria-label="Back to mailers">←</a>
+    <div>
+      <div class="row" style="gap:10px">
+        <h1>{% if mailer %}{{ mailer.name }}{% else %}New mailer{% endif %}</h1>
+        {% if mailer %}<span class="badge dot {% if mailer.is_active %}ok live{% endif %}">{% if mailer.is_active %}Active dispatch{% else %}Paused{% endif %}</span>{% endif %}
+      </div>
+      <div class="sub">AI-written threat brief with early warning for your company, suppliers and industry — delivered by email.</div>
+    </div>
+    <div class="actions">
+      <label class="switch">{{ form.is_active }} Status: Live</label>
+      <button class="btn" type="submit" formaction="{% if mailer %}{% url 'mailers:preview' mailer.id %}{% else %}{% url 'mailers:preview_new' %}{% endif %}" formtarget="_blank" title="Open the web version in a new tab">Open full preview</button>
+      <button class="btn primary" type="submit">Save changes</button>
+    </div>
+  </div>
+  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+  <nav class="steps">
+    <a href="#s1"><span>1</span>Audience &amp; persona</a><a href="#s2"><span>2</span>Perimeter tech</a>
+    <a href="#s3"><span>3</span>Early warning</a><a href="#s4"><span>4</span>Modules</a><a href="#s5"><span>5</span>Delivery</a>
+  </nav>
+
+  <div class="builder">
+  <div>
+    <!-- 01 -->
+    <section class="card" id="s1">
+      <div class="card-head"><span class="num">01</span><h2>Basics &amp; target persona</h2>{% if has_ai_key %}<span class="aside badge ai" title="The AI-written sections change tone and depth with the audience you pick">✦ Tone-adaptive AI · {{ ai_model }} · {{ ai_provider }}</span>{% else %}<span class="aside badge med" title="Set AI_BASE_URL / AI_API_KEY in .env (free options: local Ollama or Gemini) to turn on AI-written sections">AI off — no provider set</span>{% endif %}</div>
+      <div class="grid2">
+        <div class="field"><label for="id_name">Digest name</label>{{ form.name }}{{ form.name.errors }}</div>
+        {% if form.organization %}<div class="field"><label for="id_organization">Organization</label>{{ form.organization }}{{ form.organization.errors }}</div>{% endif %}
+      </div>
+      <span class="legend">Target audience tone &amp; synthesis archetype</span>
+      <div class="personas">
+        {% for r in form.audience %}
+          <label class="persona">{{ r.tag }}
+            {% if r.data.value == "executive" %}<b>▣ Executive &amp; Board</b><p>Business impact in plain language, risk framed for leadership, actions assigned to owners.</p><span class="mono-sm muted">TONE: <span style="color:var(--primary-hi)">Strategic · Risk-weighted</span></span>
+            {% else %}<b>▤ Technical &amp; SOC</b><p>CVE IDs, affected products, exploitation status, EPSS scores, and concrete patch / detection steps.</p><span class="mono-sm muted">TONE: <span style="color:var(--cyan-hi)">Forensic · Operational</span></span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="cadence well"><span style="color:var(--primary)">◷</span><span class="small">Dispatch cadence:</span>
+        <span class="mono-sm" id="cadence-text" style="color:var(--primary-hi)"></span><a href="#s5" class="mono-sm" style="margin-left:auto">Adjust in step 5</a></div>
+    </section>
+
+    <!-- 02 -->
+    <section class="card" id="s2">
+      <div class="card-head"><span class="num">02</span><h2>Perimeter &amp; technology stack</h2><span class="aside mono-sm muted"><span id="vendor-count">0</span> selected platforms</span></div>
+      <p class="muted small" style="margin:-6px 0 14px">Pick the technology you run. Matching CVEs, exploits and zero-days are pulled into the brief even below the risk threshold.</p>
+      <div class="chips" id="vendor-chips">
+        {% for group, names in vendor_groups %}
+          <div class="vgroup"><div class="caps" style="margin-bottom:6px">{{ group }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              {% for opt in form.vendors %}{% if opt.data.value in names %}<label for="{{ opt.id_for_label }}">{{ opt.tag }}{{ opt.choice_label }}</label>{% endif %}{% endfor %}
+            </div></div>
+        {% endfor %}
+        <div class="vgroup"><div class="caps" style="margin-bottom:6px">Not listed?</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <label for="other-toggle" class="other-chip"><input type="checkbox" id="other-toggle" {% if form.other_vendors.value %}checked{% endif %}>+ Other</label>
+          </div></div>
+      </div>
+      <div class="field" id="other-vendors-field" style="margin-top:12px{% if not form.other_vendors.value and not form.other_vendors.errors %};display:none{% endif %}">
+        <label>Other products</label><div data-taginput="green">{{ form.other_vendors }}</div>
+        <p class="help">Add as many as you need — press Enter or comma after each. {{ form.other_vendors.help_text }}</p>{{ form.other_vendors.errors }}
+      </div>
+      <div class="field" style="margin-top:18px"><span class="legend">Industry verticals</span><div class="chips">{{ form.industries }}</div></div>
+      <div class="grid2">
+        <div class="field"><label>Monitored threat actors &amp; APTs</label><div data-taginput="red">{{ form.threat_actors }}</div><p class="help">Press Enter or comma to add.</p></div>
+        <div class="field"><label>High-priority keywords &amp; IOC triggers</label><div data-taginput>{{ form.keywords }}</div><p class="help">Whole-word match, e.g. SCADA, Procore, VPN gateway.</p></div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="card" id="s3">
+      <div class="card-head"><span class="num">03</span><h2>Early warning &amp; supply chain watchlist</h2>
+        <span class="aside badge ok dot live">{{ source_status|length }} feed integrations</span></div>
+      <span class="legend">Connected threat signal streams</span>
+      <div class="sources">
+        {% for name, what, ok in source_status %}<div class="src {% if not ok %}off{% endif %}"><b title="{{ name }}">{{ name }}</b><span class="mono-sm">{% if ok %}{{ what }}{% else %}Needs API key{% endif %}</span></div>{% endfor %}
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Primary organization identity</label><div data-taginput="green">{{ form.watch_names }}</div><p class="help">{{ form.watch_names.help_text }}</p>{{ form.watch_names.errors }}</div>
+        <div class="field"><label>Domains</label><div data-taginput="green">{{ form.watch_domains }}</div><p class="help">{{ form.watch_domains.help_text }}</p>{{ form.watch_domains.errors }}</div>
+      </div>
+      <div class="field">
+        <div class="row between" style="margin-bottom:8px"><span class="legend" style="margin:0">Supply chain &amp; third-party partners</span>
+          <button type="button" class="btn small" id="add-supplier">+ Add vendor</button></div>
+        <div style="display:none">{{ form.suppliers }}</div>
+        <div id="supplier-rows"></div>
+        <p class="help">A supplier's breach often reaches you next — they're checked for leak-site posts, infostealer exposure and malware hosting.</p>
+        {{ form.suppliers.errors }}
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="card" id="s4">
+      <div class="card-head"><span class="num">04</span><h2>Briefing structure &amp; content modules</h2><span class="aside mono-sm muted">Drag to prioritize</span></div>
+      <ul class="modules" id="sections-list">
+        {% for key, label, sub, style in section_catalog %}
+          <li data-key="{{ key }}" draggable="true">
+            <span class="handle" title="Drag">⋮⋮</span><span class="n"></span>
+            <span class="name"><b>{{ label }}</b><span class="mono-sm {{ style }}">{% if style == "ai" %}✦ {% endif %}{{ sub }}</span></span>
+            <button type="button" data-move="-1" aria-label="Move up">↑</button>
+            <button type="button" data-move="1" aria-label="Move down">↓</button>
+            <span></span>
+            <input type="checkbox" aria-label="Include {{ label }}">
+          </li>
+        {% endfor %}
+      </ul>
+      {{ form.sections.errors }}
+      <div class="tune">
+        <div class="well">
+          <div class="row between"><span class="legend" style="margin:0">Relevance threshold</span><span class="riskval">Score ≥ <span id="risk-val">{{ form.min_risk.value|default:50 }}</span></span></div>
+          <div style="margin:10px 0 6px">{{ form.min_risk }}</div>
+          <div class="mono-sm muted">Unmatched items need this score · KEV override = 95</div>{{ form.min_risk.errors }}
+        </div>
+        <div class="well">
+          <div class="row between"><span class="legend" style="margin:0">Digest density cap</span><span style="width:90px">{{ form.max_items }}</span></div>
+          <label class="switch" style="margin-top:14px">{{ form.exploited_only }} Exploited-only filter</label>
+          <div class="mono-sm muted" style="margin-top:6px">Suppress informational advisories</div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:16px"><span class="legend">Verified source ingestion</span><div class="chips">{{ form.sources }}</div>{{ form.sources.errors }}</div>
+    </section>
+
+    <!-- 05 -->
+    <section class="card" id="s5">
+      <div class="card-head"><span class="num">05</span><h2>Delivery schedule &amp; distribution</h2><span class="aside mono-sm" style="color:var(--cyan-hi)" id="cron-text"></span></div>
+      <div class="grid4">
+        <div class="field"><label for="id_frequency">Cadence</label>{{ form.frequency }}</div>
+        <div class="field"><label for="id_send_hour">Send time</label>{{ form.send_hour }}</div>
+        <div class="field" id="weekday-field"><label for="id_send_weekday">Day</label>{{ form.send_weekday }}</div>
+        <div class="field"><label for="id_timezone">Timezone</label>{{ form.timezone }}</div>
+      </div>
+      <span class="legend">Distribution list &amp; access controls</span>
+      <div class="well" style="padding:12px">
+        <label class="switch">{{ form.send_to_all_members }} All organization members with briefs on ({{ member_count }})</label>
+        <div id="recipients-field" style="margin-top:12px">
+          {% if form.recipients.field.queryset.exists %}<div class="chips">{{ form.recipients }}</div>{% else %}<p class="muted small">No members to choose from yet.</p>{% endif %}
+          {{ form.recipients.errors }}
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- live canvas -->
+  <aside class="canvas">
+    <div class="bar"><span class="badge dot live ok">Live briefing canvas</span>
+      <button type="button" class="btn small" id="test-send" title="Email this preview to {{ user.email }} via {{ smtp_desc }}">✉ Send test email</button>
+      <button type="button" class="btn small ai" id="run-ai" {% if not has_ai_key %}disabled style="opacity:.45;cursor:not-allowed" title="Set an AI provider in .env to use AI"{% else %}title="Write the AI sections now (one call to {{ ai_provider }})"{% endif %}>✦ Run AI preview</button></div>
+    <div class="card" style="padding:0;margin:0">
+      <div class="envelope">
+        <div><b>From:</b>{{ from_email }}</div>
+        <div><b>To:</b><span id="env-to">—</span></div>
+        <div class="subj" id="env-subject">Rendering preview…</div>
+      </div>
+      <div class="errors" id="preview-errors"></div>
+      <div class="frame-wrap"><span class="badge cyan busy" id="busy" style="display:none">Rendering…</span>
+        <iframe id="email-frame" title="Email preview" sandbox="allow-popups allow-popups-to-escape-sandbox"></iframe></div>
+    </div>
+    <div class="status mono-sm muted"><span id="preview-status">Changes stream to the live preview</span><span id="preview-stats"></span></div>
+    <div class="mono-sm" id="test-status" style="margin-top:6px"></div>
+  </aside>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+(function () {
+  var form = document.getElementById("mailer-form");
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- tag inputs (keep the real field as comma text) ---------- */
+  document.querySelectorAll("[data-taginput]").forEach(function (wrap) {
+    var field = wrap.querySelector("input, textarea");
+    var box = document.createElement("div"); box.className = "taginput " + (wrap.dataset.taginput || "");
+    var entry = document.createElement("input"); entry.type = "text"; entry.placeholder = field.getAttribute("placeholder") || "Type and press Enter";
+    field.style.display = "none"; wrap.appendChild(box);
+    var tags = (field.value || "").split(/[\n,]/).map(function (t) { return t.trim(); }).filter(Boolean);
+    function sync() { field.value = tags.join(", "); field.dispatchEvent(new Event("change", { bubbles: true })); }
+    function render() {
+      box.innerHTML = "";
+      tags.forEach(function (t, i) {
+        var el = document.createElement("span"); el.className = "t"; el.textContent = t;
+        var x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove " + t);
+        x.onclick = function () { tags.splice(i, 1); render(); sync(); };
+        el.appendChild(x); box.appendChild(el);
+      });
+      box.appendChild(entry);
+    }
+    function add(v) { v = v.trim().replace(/,$/, ""); if (v && tags.map(function (t) { return t.toLowerCase(); }).indexOf(v.toLowerCase()) === -1) { tags.push(v); render(); sync(); entry.focus(); } entry.value = ""; }
+    entry.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); add(entry.value); }
+      else if (e.key === "Backspace" && !entry.value && tags.length) { tags.pop(); render(); sync(); entry.focus(); }
+    });
+    entry.addEventListener("blur", function () { if (entry.value) add(entry.value); });
+    entry.addEventListener("paste", function (e) {
+      var text = (e.clipboardData || window.clipboardData).getData("text");
+      if (/[,\n]/.test(text)) { e.preventDefault(); text.split(/[\n,]/).forEach(add); }
+    });
+    box.addEventListener("click", function (e) { if (e.target === box) entry.focus(); });
+    render();
+  });
+
+  /* ---------- supplier rows <-> textarea ("Name, domain" per line) ---------- */
+  var supTa = $("id_suppliers"), rows = $("supplier-rows");
+  function supSync() {
+    supTa.value = Array.prototype.map.call(rows.querySelectorAll(".suprow"), function (r) {
+      var n = r.querySelector(".n").value.trim(), d = r.querySelector(".d").value.trim();
+      return [n, d].filter(Boolean).join(", ");
+    }).filter(Boolean).join("\n");
+    supTa.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  function supRow(name, domain) {
+    var r = document.createElement("div"); r.className = "suprow";
+    r.innerHTML = '<span class="ico">▦</span><input class="n" type="text" placeholder="Company name"><input class="d" type="text" placeholder="domain.com" style="font-family:var(--mono)"><button type="button" class="btn icon small" aria-label="Remove">×</button>';
+    r.querySelector(".n").value = name || ""; r.querySelector(".d").value = domain || "";
+    r.querySelector(".ico").textContent = (name || domain || "?").trim().slice(0, 2).toUpperCase();
+    r.querySelector("button").onclick = function () { r.remove(); supSync(); };
+    r.addEventListener("input", function () { r.querySelector(".ico").textContent = (r.querySelector(".n").value || r.querySelector(".d").value || "?").trim().slice(0, 2).toUpperCase(); supSync(); });
+    rows.appendChild(r); return r;
+  }
+  (supTa.value || "").split("\n").forEach(function (line) {
+    if (!line.trim()) return;
+    var parts = line.split(",").map(function (p) { return p.trim(); });
+    var dom = parts.filter(function (p) { return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(p); })[0] || "";
+    supRow(parts.filter(function (p) { return p !== dom; }).join(", "), dom);
+  });
+  $("add-supplier").onclick = function () { supRow("", "").querySelector(".n").focus(); };
+
+  /* ---------- modules: order + on/off + drag ---------- */
+  var list = $("sections-list"), hidden = $("id_sections");
+  var saved = (hidden.value || "").split(",").filter(Boolean);
+  saved.slice().reverse().forEach(function (k) { var li = list.querySelector('li[data-key="' + k + '"]'); if (li) list.insertBefore(li, list.firstChild); });
+  list.querySelectorAll("li").forEach(function (li) { li.querySelector("input").checked = saved.indexOf(li.dataset.key) !== -1; });
+  function secSync() {
+    var keys = [];
+    list.querySelectorAll("li").forEach(function (li, i) {
+      var on = li.querySelector("input").checked;
+      li.classList.toggle("off", !on); li.querySelector(".n").textContent = String(i + 1).padStart(2, "0");
+      if (on) keys.push(li.dataset.key);
+    });
+    hidden.value = keys.join(","); hidden.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  list.addEventListener("change", function (e) { if (e.target !== hidden) secSync(); });
+  list.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-move]"); if (!b) return;
+    var li = b.closest("li");
+    if (b.dataset.move === "-1" && li.previousElementSibling) list.insertBefore(li, li.previousElementSibling);
+    if (b.dataset.move === "1" && li.nextElementSibling) list.insertBefore(li.nextElementSibling, li);
+    secSync();
+  });
+  var dragged = null;
+  list.addEventListener("dragstart", function (e) { dragged = e.target.closest("li"); dragged.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+  list.addEventListener("dragend", function () { if (dragged) dragged.classList.remove("dragging"); list.querySelectorAll(".over").forEach(function (x) { x.classList.remove("over"); }); dragged = null; secSync(); });
+  list.addEventListener("dragover", function (e) {
+    e.preventDefault(); var li = e.target.closest("li"); if (!li || li === dragged) return;
+    list.querySelectorAll(".over").forEach(function (x) { x.classList.remove("over"); }); li.classList.add("over");
+    var rect = li.getBoundingClientRect(); list.insertBefore(dragged, (e.clientY - rect.top) > rect.height / 2 ? li.nextSibling : li);
+  });
+  secSync();
+
+  /* ---------- small UI bits ---------- */
+  var risk = $("id_min_risk"); risk.addEventListener("input", function () { $("risk-val").textContent = risk.value; });
+  var freq = $("id_frequency"), hour = $("id_send_hour"), wd = $("id_send_weekday"), tz = $("id_timezone");
+  function cadence() {
+    $("weekday-field").style.visibility = freq.value === "weekly" ? "visible" : "hidden";
+    var h = hour.options[hour.selectedIndex].text, day = wd.options[wd.selectedIndex].text;
+    $("cadence-text").textContent = (freq.value === "weekly" ? "Weekly · " + day : "Daily") + " at " + h + " (" + tz.value + ")";
+    $("cron-text").textContent = "cron: 0 " + hour.value + " * * " + (freq.value === "weekly" ? (Number(wd.value) + 1) % 7 : "*");
+  }
+  [freq, hour, wd, tz].forEach(function (el) { el.addEventListener("change", cadence); }); cadence();
+  var all = $("id_send_to_all_members"), rec = $("recipients-field");
+  function recips() { rec.style.display = all.checked ? "none" : ""; } all.addEventListener("change", recips); recips();
+  var otherToggle = $("other-toggle"), otherField = $("id_other_vendors"), otherWrap = $("other-vendors-field");
+  function vcount() {
+    var listed = document.querySelectorAll('#vendor-chips input[name="vendors"]:checked').length;
+    var others = otherToggle.checked ? (otherField.value || "").split(",").filter(function (v) { return v.trim(); }).length : 0;
+    $("vendor-count").textContent = listed + others;
+  }
+  function otherState(focus) {
+    otherWrap.style.display = otherToggle.checked ? "" : "none";
+    otherField.disabled = !otherToggle.checked;          // unticked = custom products are not saved
+    if (focus && otherToggle.checked) { var e = otherWrap.querySelector(".taginput input"); if (e) e.focus(); }
+    vcount();
+  }
+  otherToggle.addEventListener("change", function () { otherState(true); });
+  otherField.addEventListener("change", vcount);
+  $("vendor-chips").addEventListener("change", vcount); otherState(false);
+
+  /* ---------- live preview ---------- */
+  var frame = $("email-frame"), timer = null, seq = 0;
+  function preview(ai) {
+    var mine = ++seq, fd = new FormData(form);
+    fd.set("format", "json"); if (ai) fd.set("preview_ai", "1");
+    $("busy").style.display = ""; $("busy").textContent = ai ? "Writing AI sections…" : "Rendering…";
+    fetch(form.dataset.previewUrl, { method: "POST", body: fd, credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (mine !== seq) return;
+        var errBox = $("preview-errors");
+        if (!d.ok) {
+          errBox.style.display = "block";
+          errBox.innerHTML = Object.keys(d.errors).map(function (k) { return "<div><b>" + k.replace(/_/g, " ") + ":</b> " + d.errors[k].join(" ") + "</div>"; }).join("");
+          $("preview-status").textContent = "Fix the highlighted fields to update the preview";
+          return;
+        }
+        errBox.style.display = "none";
+        frame.srcdoc = d.html.replace(/<html>/i, '<html><head><base target="_blank"></head>');
+        $("env-subject").textContent = d.subject;
+        $("env-to").textContent = d.to_count ? d.to.join(", ") + (d.to_count > d.to.length ? " +" + (d.to_count - d.to.length) + " more" : "") : "No recipients yet";
+        var aiMsg = {
+          written: " · ✓ AI sections written",
+          failed: " · ✗ AI failed: " + (d.ai_error || "OpenAI error"),
+          no_key: " · AI off: no AI provider configured",
+          off: " · AI sections fill in on send or with Run AI preview",
+          no_data: " · nothing new to summarize, so AI wasn't called",
+          not_needed: " · no AI sections enabled"
+        }[d.ai_status] || "";
+        $("preview-status").textContent = "Updated " + d.generated + aiMsg;
+        $("preview-status").style.color = d.ai_status === "failed" ? "#fb7185" : (d.ai_status === "written" ? "var(--primary-hi)" : "");
+        $("preview-stats").textContent = d.stats.included + "/" + d.stats.analyzed + " items" + (d.critical ? " · " + d.critical + " critical" : "");
+      })
+      .catch(function () { $("preview-status").textContent = "Preview unavailable — is the app still running?"; })
+      .finally(function () { if (mine === seq) $("busy").style.display = "none"; });
+  }
+  function schedule() { clearTimeout(timer); timer = setTimeout(function () { preview(false); }, 700); }
+  form.addEventListener("input", schedule); form.addEventListener("change", schedule);
+  $("run-ai").addEventListener("click", function () { clearTimeout(timer); preview(true); });
+  $("test-send").addEventListener("click", function () {
+    var btn = this, st = $("test-status"), fd = new FormData(form);
+    btn.disabled = true; st.style.color = "var(--muted)"; st.textContent = "Sending test email…";
+    fetch(form.dataset.testUrl, { method: "POST", body: fd, credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) { st.style.color = "var(--primary-hi)"; st.textContent = "✓ Sent to " + d.to + (d.dev ? " — open Mailpit at http://localhost:8025" : " via " + d.via); }
+        else { st.style.color = "#fb7185"; st.textContent = "✗ " + d.error; }
+      })
+      .catch(function () { st.style.color = "#fb7185"; st.textContent = "✗ Couldn't reach the app"; })
+      .finally(function () { btn.disabled = false; });
+  });
+  preview(false);
+})();
+</script>
+{% endblock %}

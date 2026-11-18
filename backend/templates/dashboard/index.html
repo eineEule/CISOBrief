@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Threat briefs · CISO Brief{% endblock %}
+{% block crumbs %}<b>Threat briefs</b>{% endblock %}
+{% block content %}
+<div class="row between" style="margin-bottom:16px">
+  <div><h1>Threat briefs</h1><div class="muted small" style="margin-top:4px">Every brief your mailers have produced, newest first.</div></div>
+  <a class="btn" href="/mailers/">Manage mailers</a>
+</div>
+{% if not user.organization and not user.is_staff %}
+  <div class="card muted">Your account isn't linked to an organization yet. Ask an admin to assign you.</div>
+{% endif %}
+<div class="card" style="padding:0">
+  <table>
+    <thead><tr><th style="width:110px">Date</th>{% if user.is_staff %}<th>Organization</th>{% endif %}<th>Mailer</th><th style="width:110px">Condition</th><th>Headline</th><th style="width:90px">Items</th><th style="width:90px" title="Items scoring 70+ on the 0–100 risk scale">High-risk</th><th style="width:110px">Status</th></tr></thead>
+    <tbody>
+    {% for r in reports %}
+      <tr class="{% if r.content.early_warning.critical %}sev-crit{% elif r.high_severity_count %}sev-high{% endif %}">
+        <td class="mono-sm">{{ r.report_date|date:"Y-m-d" }}</td>
+        {% if user.is_staff %}<td class="small">{{ r.organization.name }}</td>{% endif %}
+        <td class="small muted">{{ r.mailer.name|default:"—" }}</td>
+        <td>{% with c=r.content.condition %}{% if c %}<span class="badge" style="background:{{ c.color }}22;color:{{ c.color }}">{{ c.name }}</span>{% else %}<span class="faint">—</span>{% endif %}{% endwith %}</td>
+        <td>{% if r.content.early_warning.critical %}<span class="badge crit" style="margin-right:6px">Action needed</span>{% endif %}{% if r.html_content %}<a href="{% url 'reports:detail' r.id %}">{{ r.headline|truncatechars:110 }}</a>{% else %}{{ r.headline }}{% endif %}</td>
+        <td class="mono-sm">{{ r.items_included }}/{{ r.items_analyzed }}</td>
+        <td class="mono-sm" {% if r.high_severity_count %}style="color:#fb923c"{% endif %}>{{ r.high_severity_count }}</td>
+        <td><span class="pill {{ r.status }}">{{ r.get_status_display }}</span></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="muted" style="height:64px">No briefs yet. Each mailer sends on its own schedule — or use “Send now” on the Mailers page.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

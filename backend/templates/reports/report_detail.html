@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ report.headline }} · CISO Brief{% endblock %}
+{% block crumbs %}<a href="/">Briefs</a> / <b class="mono">{{ report.report_date|date:"Y-m-d" }}</b>{% endblock %}
+{% block content %}
+<div class="row between" style="margin-bottom:16px">
+  <a class="btn" href="/">← All briefs</a>
+  <div class="row">{% if report.content.early_warning.critical %}<span class="badge crit dot live">Action needed</span>{% endif %}<span class="pill {{ report.status }}">{{ report.get_status_display }}</span></div>
+</div>
+<div class="paper">{{ body }}</div>
+{% endblock %}
