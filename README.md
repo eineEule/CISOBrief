@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>CISO Brief</h1>
+<img src="docs/images/logo.png" alt="CISO Brief: Executive Threat Intelligence" width="720">
 
 <p><b>A free, self-hosted threat-intel briefing that lands in your inbox, written for the people who read it.</b></p>
 
@@ -19,6 +19,7 @@ works out what matters to <i>you</i>, and emails a brief on your schedule: board
 <p>
 <a href="#what-you-get">What you get</a> ·
 <a href="#how-it-works">How it works</a> ·
+<a href="#two-ways-to-run-it">Docker or Claude skill</a> ·
 <a href="#install-guide">Install</a> ·
 <a href="INSTALL_WITH_AI.md">AI-assisted install</a> ·
 <a href="#7-add-free-api-keys-optional-recommended">API keys</a> ·
@@ -138,6 +139,38 @@ flowchart LR
 
 5. **Write.** If AI is on, it writes the headline, summary, key risks, themes and actions in the tone of the mailer's audience. If it's off or unavailable, the brief still goes out with rules-based key risks, and the email says so honestly.
 6. **Deliver.** The brief is emailed on the mailer's own schedule and timezone. A critical early-warning hit adds **[Action needed]** to the subject line.
+
+## Two ways to run it
+
+| | **Docker app** | **Claude skill** |
+|---|---|---|
+| What you install | Docker; 7 small containers | Nothing but a folder (needs a paid Claude plan) |
+| Settings | Web mailer builder with live preview | One commented file, `ciso-brief.ini` (Claude can fill it in by asking you) |
+| Scheduling | Built in | A Claude scheduled task ("run my CISO Brief every weekday at 7am") |
+| Writing | Optional AI: local, free tier or paid | Claude writes it |
+| Email | Any SMTP server | **Optional**: Gmail/Outlook connector (draft or send), SMTP, or just show it in chat |
+| API-key sources | `.env` | `[keys]` in the settings file, or environment variables; each one optional |
+| Best for | Teams, several mailers, no AI vendor | One person or team that already uses Claude |
+
+Both use the same sources, the same matching and the same LOW-to-SEVERE rules, so they reach the same threat condition.
+
+<details>
+<summary><b>Set up the Claude skill</b></summary>
+
+The skill lives in [`claude-skill/ciso-brief/`](claude-skill/ciso-brief/).
+
+1. **Add it to Claude.**
+   - **Claude (web or desktop app):** download [`claude-skill/ciso-brief.zip`](claude-skill/ciso-brief.zip) and upload it under Skills in Claude's settings.
+   - **Claude Code:** copy the folder to `~/.claude/skills/ciso-brief/`.
+2. **Ask:** *"Set up my CISO Brief."* Claude asks for your company, domains, industry, technology, suppliers and audience, and writes `ciso-brief.ini` for you. Or copy `config.example.ini` to `ciso-brief.ini` and fill it in yourself.
+3. **Optional keys:** add free OTX, abuse.ch and NVD keys under `[keys]` (or as `CISO_BRIEF_OTX_API_KEY`, `CISO_BRIEF_ABUSECH_AUTH_KEY`, `CISO_BRIEF_NVD_API_KEY`). Blank keys simply skip that source, and the brief says which ones were skipped. See [step 7](#7-add-free-api-keys-optional-recommended) for where to get them.
+4. **Optional email:** set `[delivery] mode = email`, then either `email_method = connector` (Claude drafts or sends through your Gmail/Outlook connector) or `email_method = smtp` (fill in `[smtp]`). Leave `mode = chat` to just get the brief in the conversation.
+5. **Run it:** *"Run my CISO Brief."* To schedule: *"Run my CISO Brief every weekday at 7am."*
+
+How it works: `scripts/collect.py` (standard-library Python, nothing to install) fetches the sources and sets the threat condition by fixed rules; Claude writes the narrative; `scripts/render.py` builds the email. If Claude's environment blocks some sites, Claude fetches them with its own web tools and hands the findings back to the script, so the rules still decide the level. Sources needing API keys in headers (OTX, URLhaus) are skipped in that case. Where Claude has normal internet access (Claude Code, or the desktop app working in a folder on your computer), every source works.
+
+Keep `ciso-brief.ini` private: it can hold API keys and an email password.
+</details>
 
 ## Install guide
 

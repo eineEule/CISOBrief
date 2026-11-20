@@ -9,3 +9,8 @@ backend/db.sqlite3
 _backup_pre_merge/
 exports/
 backend/apps/intel/
+
+# CISO Brief Claude skill: personal settings and output (may hold API keys / passwords)
+ciso-brief.ini
+claude-skill/ciso-brief/config.ini
+ciso-brief-out/
