@@ -1,7 +1,14 @@
 # Fetching blocked sources with web tools
 
-Use this when `brief.json` lists sources in `blocked_sources`. Fetch only those, with your web fetch tool,
-then write `extra.json` and re-run `collect.py --no-fetch all --add extra.json` (see SKILL.md step 2).
+Use this when `brief.json` lists sources in `blocked_sources`. Fetch only those, with your web tools,
+then write `extra.json` and re-run `collect.py --no-fetch <the blocked keys> --add extra.json` (see SKILL.md step 2).
+
+**How to reach a page:** some web fetch tools only open pages that first appeared in a web search. If a direct
+fetch is refused, search for the source (e.g. "CISA adds known exploited vulnerabilities catalog <month year>",
+"The Hacker News", "ransomlook") and fetch the result link. Check the dates on what you fetch: catalog pages can be
+served from an old cache. For KEV, CISA's dated "CISA Adds N Known Exploited Vulnerabilities to Catalog" alerts
+(cisa.gov or content.govdelivery.com bulletins) or a dated news report listing the CVEs are more reliable than
+the catalog page. Raw JSON APIs (Hudson Rock, crt.sh, EPSS) usually can't be reached this way; leave them "not checked".
 
 `N` = `lookback_days` from the settings. "Watched" = the company names/domains in `[profile]` and the
 supplier names/domains in `[suppliers]`. Match whole words and whole domains only ("okta" ≠ "Oktoberfest").

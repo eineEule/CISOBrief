@@ -59,8 +59,11 @@ exactly like fetched data:
 
 ```bash
 python3 SKILL_DIR/scripts/collect.py --config ciso-brief.ini --out ciso-brief-out/brief.json \
-        --no-fetch all --add ciso-brief-out/extra.json
+        --cache-dir ciso-brief-out --no-fetch <comma-separated blocked_sources> --add ciso-brief-out/extra.json
 ```
+
+(Listing only the blocked keys lets sources that did work, e.g. MITRE ATT&CK from GitHub, run again normally.)
+If most sources were blocked, say near the top of your reply that coverage was partial and which checks were missed.
 
 Only include findings you actually saw in a fetched page, with its URL. A source you couldn't reach stays "not checked";
 the brief lists it. **If Python can't run at all**, follow `references/no-python.md` instead.

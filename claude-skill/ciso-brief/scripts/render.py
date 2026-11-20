@@ -111,6 +111,22 @@ def condition_html(brief, n):
 </td></tr></table>"""
 
 
+EW_SOURCES = ("ransomlook", "crtsh", "hudsonrock", "otx", "urlhaus", "nvd_epss")
+
+
+def quiet_line(brief):
+    """'Nothing found' is only meaningful for the sources that were actually checked."""
+    st = {x["key"]: x for x in brief["sources"]}
+    checked = [st[k]["name"] for k in EW_SOURCES if k in st and st[k]["status"] == "ok"]
+    missed = [st[k]["name"] for k in EW_SOURCES if k in st and st[k]["status"] == "failed"]
+    if not checked:
+        return "Early-warning sources could not be checked this time, so no signals is not the same as all clear."
+    if missed:
+        return ("No new signals in the early-warning sources checked (" + ", ".join(checked) + "). "
+                "Not checked: " + ", ".join(missed) + ".")
+    return "No new signals for your company, suppliers or technology."
+
+
 def h2(t):
     return f'<h2 style="font-size:16px;margin:18px 0 6px">{e(t)}</h2>'
 
@@ -137,7 +153,7 @@ def section_html(key, brief, n):
                 f'{e(al["kind_label"])} · <span style="color:#5b6470">{e(al["target"])} · {e(al["when"])}</span></div>'
                 f'<div>{a(al.get("url"), al["title"])}</div>{more}{step}</td></tr></table>')
         if ew["has_watchlist"] and not ew["alerts"]:
-            out.append('<p style="margin:0 0 6px;color:#5b6470">No new signals for your company, suppliers or technology.</p>')
+            out.append('<p style="margin:0 0 6px;color:#5b6470">' + e(quiet_line(brief)) + "</p>")
         if ew.get("more"):
             out.append(f'<p style="margin:0;color:#5b6470;font-size:13px">+ {ew["more"]} lower-priority signal(s) not shown.</p>')
         if ew["actors"]:
