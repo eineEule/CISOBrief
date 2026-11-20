@@ -157,7 +157,7 @@ Both use the same sources, the same matching and the same LOW-to-SEVERE rules, s
 <details>
 <summary><b>Set up the Claude skill</b></summary>
 
-The skill lives in [`claude-skill/ciso-brief/`](claude-skill/ciso-brief/).
+The skill lives in [`claude-skill/ciso-brief/`](claude-skill/ciso-brief/). **Full guide: [`claude-skill/README.md`](claude-skill/README.md)**: what it does, how it works, every setting, and running it without Claude.
 
 1. **Add it to Claude.**
    - **Claude (web or desktop app):** download [`claude-skill/ciso-brief.zip`](claude-skill/ciso-brief.zip) and upload it under Skills in Claude's settings.
